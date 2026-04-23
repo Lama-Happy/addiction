@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<title>AddictionTracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  button { font-family: 'Courier New', monospace; cursor: pointer; }
+
+  /* Header */
+  #header {
+    background: #111;
+    border-bottom: 2px solid #333;
+    padding: 20px 16px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-row { display: flex; align-items: center; justify-content: space-between; }
+  .header-label { font-size: 10px; letter-spacing: 4px; color: #666; text-transform: uppercase; }
+  .header-title { font-size: 22px; font-weight: bold; color: #fff; margin-top: 2px; }
+  .header-title span { color: #ff4444; }
+  .header-btns { display: flex; gap: 10px; align-items: center; }
+  #sub-count { margin-top: 12px; font-size: 11px; color: #555; letter-spacing: 1px; display: none; }
+
+  .btn-round {
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    font-size: 20px; display: flex; align-items: center; justify-content: center;
+  }
+  #btn-panic { background: #1a0a00; border: 2px solid #ff6600 !important; color: #ff6600; box-shadow: 0 0 16px #ff660044; }
+  #btn-add   { background: #ff4444; color: #fff; font-size: 24px; box-shadow: 0 0 20px #ff444444; }
+
+  /* List */
+  #list { padding: 12px 12px 100px; }
+
+  #empty {
+    text-align: center; padding: 60px 20px;
+    color: #333; font-size: 13px; letter-spacing: 2px;
+  }
+  #empty .emoji { font-size: 48px; margin-bottom: 16px; }
+  #empty .sub { font-size: 11px; margin-top: 8px; color: #222; }
+
+  /* Card */
+  .card {
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    padding: 14px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-glow {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+  }
+  .card-inner { display: flex; align-items: flex-start; gap: 12px; position: relative; }
+  .card-icon { font-size: 28px; flex-shrink: 0; padding-top: 2px; }
+  .card-info { flex: 1; min-width: 0; }
+  .card-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-name { font-size: 15px; font-weight: bold; color: #fff; }
+  .card-badge {
+    font-size: 9px; letter-spacing: 2px;
+    padding: 1px 5px; border-radius: 2px;
+  }
+  .card-elapsed { margin-top: 4px; font-size: 12px; }
+  .card-count { font-size: 10px; color: #444; margin-left: 6px; }
+  .card-date { font-size: 10px; color: #333; margin-top: 2px; }
+  .card-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .card-actions button {
+    padding: 5px 10px; border-radius: 3px; font-size: 12px; border: 1px solid;
+  }
+  .btn-now {
+    flex-shrink: 0;
+    padding: 12px 14px; border-radius: 3px;
+    border: none; font-size: 11px; font-weight: bold;
+    letter-spacing: 1px; color: #000;
+  }
+
+  /* Modal base */
+  .modal-overlay {
+    position: fixed; inset: 0; background: #000000cc;
+    z-index: 100; display: flex;
+  }
+  .modal-overlay.center { align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.bottom { align-items: flex-end; }
+  .modal-sheet {
+    width: 100%; max-width: 480px; margin: 0 auto;
+    background: #111; border-top: 2px solid #333;
+    border-radius: 12px 12px 0 0; padding: 24px 16px 40px;
+  }
+  .modal-label { font-size: 11px; letter-spacing: 3px; color: #555; margin-bottom: 16px; }
+  .modal-input {
+    width: 100%; background: #000; border: 1px solid #333;
+    color: #fff; padding: 12px; border-radius: 4px;
+    font-size: 16px; font-family: inherit; outline: none;
+    margin-bottom: 16px; color-scheme: dark;
+  }
+  .modal-row { display: flex; gap: 8px; }
+  .btn-cancel {
+    flex: 1; background: #000; border: 1px solid #333; color: #888;
+    padding: 14px; border-radius: 4px; font-size: 14px;
+  }
+  .btn-confirm {
+    flex: 2; background: #ff4444; border: none; color: #fff;
+    padding: 14px; border-radius: 4px; font-size: 14px;
+    font-weight: bold; letter-spacing: 2px;
+  }
+  .btn-confirm:disabled { background: #330000; color: #550000; cursor: default; }
+
+  /* Icon picker */
+  .icon-label { font-size: 11px; letter-spacing: 2px; color: #555; margin-bottom: 10px; }
+  #icon-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .icon-btn {
+    background: #000; border: 1px solid #333;
+    border-radius: 4px; padding: 8px; font-size: 20px;
+    transition: all 0.1s;
+  }
+  .icon-btn.selected { background: #ff4444; border-color: #ff4444; }
+
+  /* Delete modal */
+  .delete-box {
+    background: #111; border: 1px solid #440000;
+    border-radius: 8px; padding: 24px; max-width: 300px;
+    width: 100%; text-align: center;
+  }
+  .delete-box .emoji { font-size: 32px; margin-bottom: 12px; }
+  .delete-box .title { font-size: 13px; color: #fff; margin-bottom: 8px; }
+  .delete-box .sub { font-size: 11px; color: #555; margin-bottom: 20px; }
+  .btn-no { flex: 1; background: #000; border: 1px solid #333; color: #888; padding: 12px; border-radius: 4px; }
+  .btn-del { flex: 1; background: #ff4444; border: none; color: #fff; padding: 12px; border-radius: 4px; font-weight: bold; }
+
+  /* Panic modal */
+  #panic-modal {
+    position: fixed; inset: 0; background: #000000f0;
+    z-index: 200; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  #panic-modal.active { display: flex; }
+  #btn-close-panic {
+    position: absolute; top: 20px; right: 20px;
+    background: none; border: none; color: #444; font-size: 24px;
+  }
+  .panic-label { font-size: 10px; letter-spacing: 4px; color: #555; margin-bottom: 8px; }
+  #breath-cycles-txt { font-size: 11px; color: #333; margin-bottom: 32px; }
+  #breath-circle-wrap { position: relative; width: 160px; height: 160px; margin-bottom: 28px; }
+  #breath-circle-wrap svg { transform: rotate(-90deg); }
+  #breath-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  #breath-phase-label { font-size: 13px; letter-spacing: 3px; font-weight: bold; }
+  #breath-countdown { font-size: 36px; color: #fff; font-weight: bold; line-height: 1.2; }
+  #grounding-box {
+    background: #0d0d0d; border-radius: 8px;
+    padding: 20px; max-width: 320px; width: 100%;
+    text-align: center; margin-bottom: 20px;
+  }
+  .grounding-label { font-size: 11px; letter-spacing: 2px; color: #444; margin-bottom: 10px; }
+  #grounding-text { font-size: 14px; color: #bbb; line-height: 1.6; white-space: pre-line; }
+  .panic-footer { font-size: 10px; color: #333; letter-spacing: 2px; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div class="header-row">
+    <div>
+      <div class="header-label">CONTRÔLE</div>
+      <div class="header-title">ADDICTION<span>TRACKER</span></div>
+    </div>
+    <div class="header-btns">
+      <button class="btn-round" id="btn-panic" onclick="startPanic()">🆘</button>
+      <button class="btn-round" id="btn-add" onclick="openAdd()">+</button>
+    </div>
+  </div>
+  <div id="sub-count"></div>
+</div>
+
+<!-- List -->
+<div id="list">
+  <div id="empty">
+    <div class="emoji">🔒</div>
+    <div>AUCUNE ADDICTION</div>
+    <div class="sub">APPUIE SUR + POUR COMMENCER</div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay bottom" id="modal-add" style="display:none" onclick="overlayClose(event,'modal-add')">
+  <div class="modal-sheet">
+    <div class="modal-label" id="modal-add-title">NOUVELLE ADDICTION</div>
+    <input class="modal-input" id="input-name" placeholder="Nom de l'addiction..."
+      oninput="updateAddBtn()" onkeydown="if(event.key==='Enter')submitAdd()">
+    <div class="icon-label">ICÔNE</div>
+    <div id="icon-picker"></div>
+    <div class="modal-row">
+      <button class="btn-cancel" onclick="closeAdd()">ANNULER</button>
+      <button class="btn-confirm" id="btn-submit-add" onclick="submitAdd()" disabled>AJOUTER</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay center" id="modal-delete" style="display:none">
+  <div class="delete-box">
+    <div class="emoji">🗑️</div>
+    <div class="title">Supprimer cette addiction ?</div>
+    <div class="sub">Toutes les données seront perdues.</div>
+    <div class="modal-row">
+      <button class="btn-no" onclick="closeDelete()">NON</button>
+      <button class="btn-del" onclick="confirmDelete()">SUPPRIMER</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Date Modal -->
+<div class="modal-overlay bottom" id="modal-date" style="display:none" onclick="overlayClose(event,'modal-date')">
+  <div class="modal-sheet">
+    <div class="modal-label">DATE PERSONNALISÉE</div>
+    <input type="datetime-local" class="modal-input" id="input-date" style="margin-bottom:20px">
+    <div class="modal-row">
+      <button class="btn-cancel" onclick="closeDate()">ANNULER</button>
+      <button class="btn-confirm" style="flex:2" onclick="applyDate()">APPLIQUER</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panic Modal -->
+<div id="panic-modal">
+  <button id="btn-close-panic" onclick="closePanic()">✕</button>
+  <div class="panic-label">RESPIRATION 4-7-8</div>
+  <div id="breath-cycles-txt">0 cycle complété</div>
+  <div id="breath-circle-wrap">
+    <svg width="160" height="160">
+      <circle cx="80" cy="80" r="60" fill="none" stroke="#1a1a1a" stroke-width="8"/>
+      <circle id="breath-arc" cx="80" cy="80" r="60" fill="none"
+        stroke="#44aaff" stroke-width="8" stroke-linecap="round"
+        stroke-dasharray="0 376.99"/>
+    </svg>
+    <div id="breath-center">
+      <div id="breath-phase-label">INSPIRE</div>
+      <div id="breath-countdown">4</div>
+    </div>
+  </div>
+  <div id="grounding-box">
+    <div class="grounding-label">ANCRAGE</div>
+    <div id="grounding-text"></div>
+  </div>
+  <div class="panic-footer">CONTINUE JUSQU'À CE QUE L'ENVIE PASSE</div>
+</div>
+
+<script>
+const STORAGE_KEY = 'addiction_tracker_v1';
+const ICONS = ["🎯","🚬","🍺","📱","🍔","🎮","☕","💊","🍷","🍭","💸","🏋️","📺","🧠","💉","🫁","🥤","🍕"];
+const BREATH_SEQ = [
+  { label: "INSPIRE",  duration: 4, color: "#44aaff" },
+  { label: "RETIENS",  duration: 7, color: "#aa44ff" },
+  { label: "EXPIRE",   duration: 8, color: "#44ffcc" },
+];
+const GROUNDING = [
+  "L'envie dure en moyenne 3 minutes.\nTu peux tenir 3 minutes.",
+  "Tu as déjà résisté avant.\nTu sais comment ça finit si tu cèdes.",
+  "Nomme 5 choses que tu vois autour de toi.",
+  "L'inconfort n'est pas un danger.\nC'est juste de l'inconfort.",
+  "Dans 10 minutes ça sera moins fort.\nDans 30 minutes tu seras fier.",
+  "Le craving est une vague —\nil monte, puis il redescend.",
+  "Tu n'as pas besoin de ça.\nTu en as envie. C'est pas pareil.",
+];
+const CIRCUMFERENCE = 2 * Math.PI * 60;
+
+// --- State ---
+let habits = [];
+let nowTs = Date.now();
+let editId = null;
+let deleteId = null;
+let customDateId = null;
+let selectedIcon = "🎯";
+let tickInterval = null;
+
+// Breath state
+let breathActive = false;
+let breathPhase = 0;
+let breathTimer = 0;
+let breathCycles = 0;
+let breathRafId = null;
+let breathLastTs = null;
+
+// --- Persistence ---
+function load() {
+  try { habits = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { habits = []; }
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(habits)); } catch {}
+}
+
+// --- Utils ---
+function formatDuration(ms) {
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d > 0) return `${d}j ${h % 24}h`;
+  if (h > 0) return `${h}h ${m % 60}m`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}
+function urgencyColor(ms) {
+  const h = ms / 3600000;
+  if (h < 2) return "#ff4444";
+  if (h < 12) return "#ff8800";
+  if (h < 48) return "#ffcc00";
+  return "#44ff88";
+}
+function urgencyLabel(ms) {
+  const h = ms / 3600000;
+  if (h < 2) return "CRITIQUE";
+  if (h < 12) return "RÉCENT";
+  if (h < 48) return "OK";
+  return "PROPRE";
+}
+function pad(n) { return String(n).padStart(2, "0"); }
+function dtLocalStr(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// --- Render ---
+function render() {
+  nowTs = Date.now();
+  const sorted = [...habits].sort((a, b) => {
+    if (!a.lastTime && !b.lastTime) return 0;
+    if (!a.lastTime) return -1;
+    if (!b.lastTime) return -1;
+    return a.lastTime - b.lastTime;
+  });
+
+  const empty = document.getElementById('empty');
+  const subCount = document.getElementById('sub-count');
+  const list = document.getElementById('list');
+
+  if (sorted.length === 0) {
+    empty.style.display = 'block';
+    subCount.style.display = 'none';
+    // clear cards except empty
+    [...list.children].forEach(c => { if (c.id !== 'empty') c.remove(); });
+    return;
+  }
+
+  empty.style.display = 'none';
+  subCount.style.display = 'block';
+  subCount.textContent = `${habits.length} ADDICTION${habits.length > 1 ? 'S' : ''} SUIVIE${habits.length > 1 ? 'S' : ''}`;
+
+  // Sync cards
+  const existingIds = new Set([...list.querySelectorAll('.card')].map(c => c.dataset.id));
+  const newIds = new Set(sorted.map(h => String(h.id)));
+
+  // Remove deleted
+  existingIds.forEach(id => { if (!newIds.has(id)) list.querySelector(`[data-id="${id}"]`)?.remove(); });
+
+  sorted.forEach((habit, i) => {
+    const elapsed = habit.lastTime ? nowTs - habit.lastTime : null;
+    const color = elapsed !== null ? urgencyColor(elapsed) : "#555";
+    const label = elapsed !== null ? urgencyLabel(elapsed) : "JAMAIS";
+    const elapsedStr = elapsed !== null ? formatDuration(elapsed) : null;
+    const dateStr = habit.lastTime
+      ? new Date(habit.lastTime).toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })
+      : null;
+
+    let card = list.querySelector(`[data-id="${habit.id}"]`);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.id = habit.id;
+      list.appendChild(card);
+    }
+
+    // Sort order
+    card.style.order = i;
+
+    card.style.borderLeft = `3px solid ${color}`;
+    card.innerHTML = `
+      <div class="card-glow" style="background:linear-gradient(135deg,${color}08 0%,transparent 60%)"></div>
+      <div class="card-inner">
+        <div class="card-icon">${habit.icon}</div>
+        <div class="card-info">
+          <div class="card-title-row">
+            <span class="card-name">${habit.name}</span>
+            <span class="card-badge" style="color:${color};border:1px solid ${color}44">${label}</span>
+          </div>
+          <div class="card-elapsed">
+            ${elapsedStr
+              ? `<span style="color:${color};font-weight:bold">${elapsedStr}</span><span class="card-count">· ${habit.count}x total</span>`
+              : `<span style="color:#444">jamais fait</span>`}
+          </div>
+          ${dateStr ? `<div class="card-date">dernière fois: ${dateStr}</div>` : ''}
+          <div class="card-actions">
+            <button style="color:${color};border-color:${color}55;background:#111"
+              onclick="openDate(${habit.id})">📅 date</button>
+            <button style="color:#666;border-color:#2a2a2a;background:#111"
+              onclick="openEdit(${habit.id})">✏️ edit</button>
+            <button style="color:#cc3333;border-color:#330000;background:#110000"
+              onclick="openDeleteConfirm(${habit.id})">🗑</button>
+          </div>
+        </div>
+        <button class="btn-now" style="background:${color}"
+          onclick="markNow(${habit.id})">NOW</button>
+      </div>
+    `;
+  });
+
+  // Maintain order
+  list.style.display = 'flex';
+  list.style.flexDirection = 'column';
+}
+
+// --- Tick ---
+function startTick() {
+  if (tickInterval) return;
+  tickInterval = setInterval(render, 1000);
+}
+startTick();
+
+// --- Actions ---
+function markNow(id) {
+  habits = habits.map(h => h.id === id ? { ...h, lastTime: Date.now(), count: (h.count || 0) + 1 } : h);
+  save(); render();
+}
+
+// --- Add/Edit ---
+function buildIconPicker() {
+  const picker = document.getElementById('icon-picker');
+  picker.innerHTML = '';
+  ICONS.forEach(icon => {
+    const btn = document.createElement('button');
+    btn.className = 'icon-btn' + (icon === selectedIcon ? ' selected' : '');
+    btn.textContent = icon;
+    btn.onclick = () => { selectedIcon = icon; buildIconPicker(); };
+    picker.appendChild(btn);
+  });
+}
+
+function openAdd() {
+  editId = null;
+  selectedIcon = "🎯";
+  document.getElementById('input-name').value = '';
+  document.getElementById('modal-add-title').textContent = 'NOUVELLE ADDICTION';
+  document.getElementById('btn-submit-add').textContent = 'AJOUTER';
+  document.getElementById('btn-submit-add').disabled = true;
+  buildIconPicker();
+  document.getElementById('modal-add').style.display = 'flex';
+  setTimeout(() => document.getElementById('input-name').focus(), 100);
+}
+
+function openEdit(id) {
+  const h = habits.find(x => x.id === id);
+  if (!h) return;
+  editId = id;
+  selectedIcon = h.icon;
+  document.getElementById('input-name').value = h.name;
+  document.getElementById('modal-add-title').textContent = 'MODIFIER';
+  document.getElementById('btn-submit-add').textContent = 'MODIFIER';
+  document.getElementById('btn-submit-add').disabled = false;
+  buildIconPicker();
+  document.getElementById('modal-add').style.display = 'flex';
+}
+
+function closeAdd() {
+  document.getElementById('modal-add').style.display = 'none';
+  editId = null;
+}
+
+function updateAddBtn() {
+  const v = document.getElementById('input-name').value.trim();
+  const btn = document.getElementById('btn-submit-add');
+  btn.disabled = !v;
+  btn.style.background = v ? '#ff4444' : '#330000';
+  btn.style.color = v ? '#fff' : '#550000';
+}
+
+function submitAdd() {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) return;
+  if (editId !== null) {
+    habits = habits.map(h => h.id === editId ? { ...h, name, icon: selectedIcon } : h);
+    editId = null;
+  } else {
+    habits.push({ id: Date.now(), name, icon: selectedIcon, lastTime: null, count: 0 });
+  }
+  save(); render(); closeAdd();
+}
+
+// --- Delete ---
+function openDeleteConfirm(id) {
+  deleteId = id;
+  document.getElementById('modal-delete').style.display = 'flex';
+}
+function closeDelete() {
+  document.getElementById('modal-delete').style.display = 'none';
+  deleteId = null;
+}
+function confirmDelete() {
+  if (deleteId === null) return;
+  habits = habits.filter(h => h.id !== deleteId);
+  save(); render(); closeDelete();
+}
+
+// --- Custom Date ---
+function openDate(id) {
+  customDateId = id;
+  const h = habits.find(x => x.id === id);
+  const ts = h?.lastTime || Date.now();
+  document.getElementById('input-date').value = dtLocalStr(ts);
+  document.getElementById('modal-date').style.display = 'flex';
+}
+function closeDate() {
+  document.getElementById('modal-date').style.display = 'none';
+  customDateId = null;
+}
+function applyDate() {
+  const val = document.getElementById('input-date').value;
+  if (!val) return;
+  const ts = new Date(val).getTime();
+  if (isNaN(ts)) return;
+  habits = habits.map(h => h.id === customDateId ? { ...h, lastTime: ts, count: (h.count || 0) + 1 } : h);
+  save(); render(); closeDate();
+}
+
+// --- Overlay close ---
+function overlayClose(e, id) {
+  if (e.target === e.currentTarget) document.getElementById(id).style.display = 'none';
+}
+
+// --- Panic / Breath ---
+function startPanic() {
+  breathPhase = 0;
+  breathTimer = 0;
+  breathCycles = 0;
+  breathActive = true;
+  breathLastTs = null;
+  document.getElementById('panic-modal').classList.add('active');
+  updateGrounding();
+  if (breathRafId) cancelAnimationFrame(breathRafId);
+  breathRafId = requestAnimationFrame(breathTick);
+}
+
+function closePanic() {
+  breathActive = false;
+  if (breathRafId) cancelAnimationFrame(breathRafId);
+  document.getElementById('panic-modal').classList.remove('active');
+}
+
+function breathTick(ts) {
+  if (!breathActive) return;
+  if (breathLastTs === null) breathLastTs = ts;
+  const delta = (ts - breathLastTs) / 1000;
+  breathLastTs = ts;
+
+  const step = BREATH_SEQ[breathPhase];
+  breathTimer += delta;
+
+  if (breathTimer >= step.duration) {
+    breathTimer = 0;
+    breathPhase = (breathPhase + 1) % BREATH_SEQ.length;
+    if (breathPhase === 0) {
+      breathCycles++;
+      updateGrounding();
+    }
+  }
+
+  updateBreathUI();
+  breathRafId = requestAnimationFrame(breathTick);
+}
+
+function updateBreathUI() {
+  const step = BREATH_SEQ[breathPhase];
+  const progress = breathTimer / step.duration;
+  const dash = CIRCUMFERENCE * progress;
+
+  const arc = document.getElementById('breath-arc');
+  arc.setAttribute('stroke-dasharray', `${dash} ${CIRCUMFERENCE}`);
+  arc.setAttribute('stroke', step.color);
+
+  document.getElementById('breath-phase-label').textContent = step.label;
+  document.getElementById('breath-phase-label').style.color = step.color;
+  document.getElementById('breath-countdown').textContent = Math.ceil(step.duration - breathTimer);
+
+  const c = breathCycles;
+  document.getElementById('breath-cycles-txt').textContent =
+    `${c} cycle${c > 1 ? 's' : ''} complété${c > 1 ? 's' : ''}`;
+
+  const box = document.getElementById('grounding-box');
+  box.style.border = `1px solid ${step.color}33`;
+}
+
+function updateGrounding() {
+  document.getElementById('grounding-text').textContent = GROUNDING[breathCycles % GROUNDING.length];
+}
+
+// --- Init ---
+load();
+render();
+</script>
+</body>
+</html>
